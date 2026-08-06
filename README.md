@@ -31,7 +31,7 @@ If a course creator you follow would rather you didn't do this, respect that.
 
 ## Install
 
-    npm install -g skrape
+    npm install -g @mogulmoretti/skrape
     skrape
 
 That's the whole setup. First run installs the browser skrape needs (a

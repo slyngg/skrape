@@ -1,22 +1,42 @@
 {
-  "name": "skrape",
+  "name": "@mogulmoretti/skrape",
   "version": "0.1.0",
   "description": "Read Skool course content instead of watching it — pulls the classroom of a community you belong to into clean, readable transcripts.",
-  "keywords": ["skool", "cli", "transcript", "video-to-text", "loom", "course"],
+  "keywords": [
+    "skool",
+    "cli",
+    "transcript",
+    "video-to-text",
+    "loom",
+    "course"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/slyngg/skrape.git" },
-  "bugs": { "url": "https://github.com/slyngg/skrape/issues" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slyngg/skrape.git"
+  },
+  "bugs": {
+    "url": "https://github.com/slyngg/skrape/issues"
+  },
   "homepage": "https://github.com/slyngg/skrape#readme",
   "type": "module",
-  "bin": { "skrape": "./dist/cli.js" },
-  "files": ["dist", "README.md", "LICENSE"],
+  "bin": {
+    "skrape": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc && chmod +x dist/cli.js",
     "prepublishOnly": "npm run build && npm test",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "better-sqlite3": "^11.5.0",
     "commander": "^12.1.0",
