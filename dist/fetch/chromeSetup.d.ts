@@ -1,0 +1,54 @@
+/**
+ * All the real, non-pure IO Playwright's Chrome install needs: checking a
+ * cheap on-disk marker, probing whether Chrome is actually launchable, and
+ * running the installer. Kept separate from `../tui/chromeSetup.ts`, which
+ * holds the decision logic and is unit-tested against fakes of the
+ * functions here — none of *this* file is meaningfully unit-testable
+ * (it launches a real browser / spawns a real child process / hits disk).
+ */
+/**
+ * True when a past run confirmed Chrome installed *and* the executable path
+ * recorded then still exists now. The marker stores that resolved path
+ * (see `markChromeInstalled`) rather than a bare flag, so an uninstall,
+ * move, or OS package-manager removal after the marker was written is
+ * caught here — cheaply, via `existsSync`, never by launching a browser.
+ * A missing/unreadable/empty marker is just treated as "not installed".
+ */
+export declare function isChromeMarkedInstalled(markerPath: string): boolean;
+/** Records the confirmed Chrome executable's path, so later runs can skip
+ *  the probe by cheaply checking that path still exists on disk. */
+export declare function markChromeInstalled(markerPath: string, executablePath: string): Promise<void>;
+/**
+ * Real "is Chrome actually launchable" probe: Playwright exposes no public
+ * API to ask "is the 'chrome' channel installed" without launching it —
+ * `chromium.executablePath()` takes no channel argument and always returns
+ * the bundled Chromium's default path regardless, whether or not anything
+ * is actually installed there. So the reliable check is a real launch.
+ *
+ * This launches a throwaway, headless Chrome via `browserType.launchServer()`
+ * (no persistent context, no profile directory at all) and closes it
+ * immediately — it can never touch the user's real login profile, and nothing
+ * survives the call either way. `launchServer()` (unlike `launch()`) exposes
+ * the spawned process via `.process()`, whose Node `spawnfile` is the actual
+ * resolved Chrome executable path Playwright launched — that's what gets
+ * returned so callers can persist a marker that verifies something real,
+ * rather than a bare boolean. Playwright itself is imported dynamically so
+ * a user who already has a confirmed marker (the common case after the first
+ * run) never pays Playwright's module-load cost at all.
+ */
+export declare function probeChromeLaunchable(): Promise<string | undefined>;
+/**
+ * Runs the equivalent of `npx playwright install chrome` in-process, by
+ * spawning Playwright's own bundled CLI script directly. Preferred over
+ * `npx playwright install chrome` because the CLI path is resolved from
+ * node_modules up front (no npm package resolution / registry round trip
+ * just to find the command), and preferred over trying to call an in-process
+ * "install" function because Playwright doesn't export one from its public
+ * API surface — the installer lives inside its bundled, unexported CLI.
+ *
+ * `onProgress` fires roughly once a second with the elapsed seconds so
+ * callers can render a simple "still working…" indicator — Playwright's own
+ * download progress bars are written directly to the child's TTY and aren't
+ * easily piped through as structured progress.
+ */
+export declare function installChromeViaCli(onProgress?: (elapsedSeconds: number) => void): Promise<void>;
