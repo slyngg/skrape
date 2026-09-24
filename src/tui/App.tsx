@@ -3,7 +3,7 @@ import { Box, Text, useApp, useInput } from 'ink';
 import { SelectList } from './SelectList.js';
 import { applyProgress, createProgressState, formatProgressBar, type ProgressState } from './progress.js';
 import { formatVideoLine, nothingTranscribed, sortedProblems } from './summary.js';
-import { ACCENT, OUTCOME_STYLE, estimateRemainingMs, formatDuration } from './theme.js';
+import { ACCENT, OUTCOME_STYLE, displayPath, estimateRemainingMs, formatDuration } from './theme.js';
 import { isValidSlug, normalizeSlug } from './slug.js';
 import { MENU_ITEMS, nextStepForMenuChoice, type DoneState, type MenuChoice } from './flow.js';
 import { revealOutputFolder } from './reveal.js';
@@ -11,12 +11,14 @@ import type { CommunityRef } from '../discover/communities.js';
 import type { Outcome, ProgressEvent, SyncSummary } from '../sync.js';
 
 export interface AppControllers {
-  /** Output root directory, e.g. './out' — the community slug is appended. */
+  /** Absolute output root, e.g. ~/skrape; the community slug is appended. */
   outRoot: string;
   checkLoggedIn: () => Promise<boolean>;
   login: () => Promise<void>;
   discoverCommunities: () => Promise<CommunityRef[] | null>;
   countAccessibleCourses: (slug: string) => Promise<number>;
+  /** Checked when the user picks videos, so installing it in another terminal works without a restart. */
+  hasYtDlp: () => Promise<boolean>;
   runSync: (
     slug: string,
     outDir: string,
@@ -33,7 +35,7 @@ type Step =
   | { kind: 'picking'; communities: CommunityRef[] }
   | { kind: 'manual-slug'; value: string; error: string | null }
   | { kind: 'counting'; slug: string; name: string }
-  | { kind: 'confirming'; slug: string; name: string; courseCount: number; outDir: string }
+  | { kind: 'confirming'; slug: string; name: string; courseCount: number; outDir: string; notice?: string }
   | { kind: 'syncing'; slug: string; name: string; courseCount: number; outDir: string; videos: boolean; startedAt: number; progress: ProgressState }
   | { kind: 'done'; slug: string; name: string; courseCount: number; outDir: string; elapsedMs: number; summary: SyncSummary }
   | { kind: 'error'; message: string };
@@ -143,6 +145,9 @@ function Timing({ startedAt, done, total }: { startedAt: number; done: number; t
 }
 
 type SyncMode = 'transcripts' | 'videos' | 'quit';
+
+const YT_DLP_MISSING =
+  'Video downloads need yt-dlp, which isn\'t installed. In another terminal run: brew install yt-dlp ffmpeg (or see github.com/yt-dlp/yt-dlp), then pick again.';
 
 const MODE_ITEMS: Array<{ label: string; value: SyncMode; hint?: string }> = [
   { label: 'Transcripts', value: 'transcripts', hint: 'fast · text only' },
@@ -430,7 +435,7 @@ export function App({ controllers }: { controllers: AppControllers }): React.JSX
                 ['Community', <Text bold>{name}</Text>],
                 ['URL', `skool.com/${slug}`],
                 ['Courses', `${courseCount} you can access`],
-                ['Saving to', outDir],
+                ['Saving to', displayPath(outDir)],
               ]}
             />
             <Text> </Text>
@@ -443,14 +448,31 @@ export function App({ controllers }: { controllers: AppControllers }): React.JSX
                   exit();
                   return;
                 }
-                setStep({
-                  kind: 'syncing', slug, name, courseCount, outDir,
-                  videos: mode === 'videos',
-                  startedAt: Date.now(),
-                  progress: createProgressState(0),
-                });
+                const start = () =>
+                  setStep({
+                    kind: 'syncing', slug, name, courseCount, outDir,
+                    videos: mode === 'videos',
+                    startedAt: Date.now(),
+                    progress: createProgressState(0),
+                  });
+                if (mode !== 'videos') {
+                  start();
+                  return;
+                }
+                controllers
+                  .hasYtDlp()
+                  .catch(() => false)
+                  .then((ok) => {
+                    if (ok) start();
+                    else setStep({ ...step, notice: YT_DLP_MISSING });
+                  });
               }}
             />
+            {step.notice && (
+              <Box marginTop={1}>
+                <Text color="yellow">{step.notice}</Text>
+              </Box>
+            )}
           </Box>
         );
       }
@@ -493,7 +515,7 @@ export function App({ controllers }: { controllers: AppControllers }): React.JSX
           ['Lessons', <OutcomeChips counts={summary.counts} />],
         ];
         if (videoLine) rows.push(['Videos', videoLine]);
-        rows.push(['Saved to', <Text color={ACCENT}>{step.outDir}</Text>]);
+        rows.push(['Saved to', <Text color={ACCENT}>{displayPath(step.outDir)}</Text>]);
         return (
           <Box flexDirection="column">
             {empty && summary.counts.skipped === 0 ? (

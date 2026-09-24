@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createRequire } from 'node:module';
+import { join, resolve } from 'node:path';
 import { styleText } from 'node:util';
 import { Command } from 'commander';
 import { HttpFetcher } from './fetch/http.js';
@@ -8,8 +9,8 @@ import { ResilientFetcher } from './fetch/resilient.js';
 import { openDb } from './store/db.js';
 import { syncClassroom } from './sync.js';
 import { formatSummary, type Paint } from './tui/summary.js';
-import { OUTCOME_STYLE, formatDuration } from './tui/theme.js';
-import { login, profileDir, dbPath, ensureRoot, isLoggedIn } from './auth/session.js';
+import { OUTCOME_STYLE, displayPath, formatDuration } from './tui/theme.js';
+import { login, profileDir, dbPath, defaultOutRoot, ensureRoot, isLoggedIn } from './auth/session.js';
 
 // Color only for a human at a terminal; pipes and NO_COLOR get plain text.
 const useColor = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
@@ -37,13 +38,15 @@ program
   .command('login')
   .description('Sign in to Skool once; the session is reused by later runs')
   .action(async () => {
+    console.log('A browser window is opening. Sign in to Skool there (Ctrl+C to cancel)…');
     await login();
+    console.log(`${paint('green', '✓')} Signed in. Future runs reuse this session.`);
   });
 
 program
   .command('sync')
   .argument('<slug>', 'community slug, e.g. demo from skool.com/demo')
-  .option('-o, --out <dir>', 'output directory', './out')
+  .option('-o, --out <dir>', 'output directory', defaultOutRoot())
   .option('-c, --concurrency <n>', 'parallel requests', '4')
   .option('--videos', 'also download every lesson video (needs yt-dlp)')
   .description('Pull a community classroom to disk as transcripts (and optionally videos)')
@@ -59,7 +62,7 @@ program
     }
 
     await ensureRoot();
-    const outDir = `${options.out}/${slug}`;
+    const outDir = join(resolve(options.out), slug);
     const db = openDb(dbPath());
     const browser = new BrowserFetcher(profileDir());
     const fetcher = new ResilientFetcher(new HttpFetcher(), async () => browser, isLoggedIn);
@@ -82,7 +85,7 @@ program
       });
 
       console.log('');
-      for (const line of formatSummary(summary, outDir, paint)) console.log(line);
+      for (const line of formatSummary(summary, displayPath(outDir), paint)) console.log(line);
       console.log(paint('dim', `Finished in ${formatDuration(Date.now() - startedAt)}`));
       if (fetcher.escalatedRoutes.size > 0) {
         console.log(paint('dim', `Escalated to browser: ${[...fetcher.escalatedRoutes].join(', ')}`));

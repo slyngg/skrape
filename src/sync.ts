@@ -1,7 +1,8 @@
 import { listCourses, listLessons } from './discover/skool.js';
 import { getTranscript } from './media/index.js';
 import { downloadVideo, hasYtDlp } from './media/download.js';
-import { videoPath, writeTranscript } from './store/markdown.js';
+import { existsSync } from 'node:fs';
+import { transcriptPath, videoPath, writeTranscript } from './store/markdown.js';
 import type { Db } from './store/db.js';
 import type { ContentItem, Fetcher } from './types.js';
 
@@ -218,7 +219,8 @@ export async function syncClassroom(options: SyncOptions): Promise<SyncSummary> 
       } catch (error) {
         return record('failed', item, `could not read transcript status: ${errorMessage(error)}`);
       }
-      if (status === 'ok') return record('skipped', item);
+      // 'ok' in the db only means it was written *somewhere*; skip only when the file is in this outDir.
+      if (status === 'ok' && existsSync(transcriptPath(outDir, item, padWidth))) return record('skipped', item);
 
       let result;
       try {

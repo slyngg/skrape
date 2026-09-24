@@ -66,6 +66,7 @@ vi.mock('../../src/store/db.js', () => ({
 vi.mock('../../src/auth/session.js', () => ({
   ensureRoot: vi.fn(async () => {}),
   dbPath: vi.fn(() => '/tmp/fake.db'),
+  defaultOutRoot: vi.fn(() => '/tmp/fake-out'),
   profileDir: vi.fn(() => '/tmp/fake-profile'),
   chromeMarkerPath: vi.fn(() => '/tmp/fake-chrome-marker'),
   isLoggedIn: vi.fn(() => true),

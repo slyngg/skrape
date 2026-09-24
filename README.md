@@ -57,8 +57,9 @@ From there you can sync another community, re-sync the same one (it's
 incremental: already-fetched lessons are skipped), open the output folder,
 or quit.
 
-Output lands in `./out/<slug>/transcripts/<course>/NN-lesson.md`, and videos
-(if you asked for them) in `./out/<slug>/videos/<course>/NN-lesson.mp4`.
+Output lands in `~/skrape/<slug>/transcripts/<course>/NN-lesson.md`, and videos
+(if you asked for them) in `~/skrape/<slug>/videos/<course>/NN-lesson.mp4`,
+wherever you run skrape from.
 
 ### Downloading videos
 
@@ -79,7 +80,7 @@ The underlying subcommands work directly too, without the guided flow:
 
     skrape login                     # once: sign in by hand, session persists
     skrape sync <slug>                # slug is the part after skool.com/
-    skrape sync <slug> -o ./out -c 4  # custom output dir / concurrency
+    skrape sync <slug> -o ~/notes -c 4  # custom output dir / concurrency
     skrape sync <slug> --videos       # transcripts + every lesson video
 
 ### Building from source

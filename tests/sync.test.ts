@@ -319,3 +319,19 @@ describe('syncClassroom — course-level and per-lesson resilience', () => {
     expect(files.some((f) => /^119-/.test(f))).toBe(true);
   });
 });
+
+describe('syncClassroom — resume is per output folder', () => {
+  it('re-writes transcripts into a new folder instead of skipping them as already done', async () => {
+    const db = openDb(':memory:');
+    try {
+      await syncClassroom({ slug: 'demo', outDir: await mkdtemp(join(tmpdir(), 'skool-a-')), db, fetcher });
+      const second = await mkdtemp(join(tmpdir(), 'skool-b-'));
+      const summary = await syncClassroom({ slug: 'demo', outDir: second, db, fetcher });
+      expect(summary.counts.ok).toBe(1);
+      expect(summary.counts.skipped).toBe(0);
+      expect(await readdir(join(second, 'transcripts', 'course-one'))).toHaveLength(1);
+    } finally {
+      db.close();
+    }
+  });
+});

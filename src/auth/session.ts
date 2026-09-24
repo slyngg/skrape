@@ -2,11 +2,17 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
 import { extractNextData, PayloadParseError } from '../fetch/nextdata.js';
+import { markedExecutablePath } from '../fetch/chromeSetup.js';
 
 const ROOT = join(homedir(), '.skool-skrape');
 
 export function profileDir(): string {
   return join(ROOT, 'chrome-profile');
+}
+
+/** Where synced communities land unless -o says otherwise: one fixed place, whatever the cwd. */
+export function defaultOutRoot(): string {
+  return join(homedir(), 'skrape');
 }
 
 export function dbPath(): string {
@@ -20,6 +26,12 @@ export function dbPath(): string {
  */
 export function chromeMarkerPath(): string {
   return join(ROOT, 'chrome-installed');
+}
+
+/** Launch the browser first-run setup confirmed; before any setup ran, assume the user's Chrome. */
+export function browserLaunchOptions(): { executablePath: string } | { channel: string } {
+  const executablePath = markedExecutablePath(chromeMarkerPath());
+  return executablePath ? { executablePath } : { channel: 'chrome' };
 }
 
 export async function ensureRoot(): Promise<void> {
@@ -56,16 +68,13 @@ export async function login(onContext?: (context: LoginContextHandle) => void): 
   await ensureRoot();
   const { chromium } = await import('playwright');
   const context = await chromium.launchPersistentContext(profileDir(), {
-    channel: 'chrome',
+    ...browserLaunchOptions(),
     headless: false,
   });
   onContext?.(context);
 
   const page = context.pages()[0] ?? (await context.newPage());
   await page.goto('https://www.skool.com/login', { waitUntil: 'domcontentloaded' });
-
-  console.log('\nA browser window is open. Sign in to Skool there.');
-  console.log('Waiting for you to reach a logged-in page (Ctrl+C to cancel)...\n');
 
   await page.waitForFunction(
     () => {
@@ -81,6 +90,5 @@ export async function login(onContext?: (context: LoginContextHandle) => void): 
     { timeout: 0 },
   );
 
-  console.log('Signed in. Session saved, future runs will not need this.');
   await context.close();
 }

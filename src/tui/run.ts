@@ -5,14 +5,14 @@ import { BrowserFetcher } from '../fetch/browser.js';
 import { isChromeMarkedInstalled, installChromeViaCli, markChromeInstalled, probeChromeLaunchable } from '../fetch/chromeSetup.js';
 import { openDb } from '../store/db.js';
 import { syncClassroom } from '../sync.js';
-import { chromeMarkerPath, dbPath, ensureRoot, isLoggedIn, login, profileDir } from '../auth/session.js';
+import { hasYtDlp } from '../media/download.js';
+import { chromeMarkerPath, dbPath, defaultOutRoot, ensureRoot, isLoggedIn, login, profileDir } from '../auth/session.js';
 import { listCourses } from '../discover/skool.js';
 import { listUserCommunities } from '../discover/communities.js';
 import { App, type AppControllers } from './App.js';
 import { createBrowserLifecycle, type BrowserLifecycle } from './browserLifecycle.js';
 import { ensureChromeReady } from './chromeSetup.js';
 
-const OUT_ROOT = './out';
 
 /**
  * Runs the guided, no-arguments flow: session check, community picker,
@@ -43,8 +43,8 @@ export async function runGuidedFlow(): Promise<void> {
         const executablePath = await probeChromeLaunchable();
         if (!executablePath) {
           throw new Error(
-            'Chrome installed, but still could not be launched. This usually means a platform-specific ' +
-              'dependency is missing. See the Playwright install output above for details.',
+            'The browser installed, but still could not be launched. This usually means a system library is missing' +
+              (process.platform === 'linux' ? '. Fix it with: sudo npx playwright install-deps chromium' : '. See the install output above.'),
           );
         }
         return executablePath;
@@ -83,7 +83,7 @@ export async function runGuidedFlow(): Promise<void> {
   process.on('SIGINT', onSigint);
 
   const controllers: AppControllers = {
-    outRoot: OUT_ROOT,
+    outRoot: defaultOutRoot(),
 
     checkLoggedIn: async () => lifecycle.checkLoggedIn(),
 
@@ -97,6 +97,8 @@ export async function runGuidedFlow(): Promise<void> {
       const courses = await listCourses(slug, lifecycle.getFetcher());
       return courses.filter((course) => course.hasAccess).length;
     },
+
+    hasYtDlp,
 
     runSync: async (slug, outDir, onProgress, videos) =>
       syncClassroom({ slug, outDir, db, fetcher: lifecycle.getFetcher(), concurrency: 4, videos, onProgress }),

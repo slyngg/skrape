@@ -1,4 +1,5 @@
 import type { Fetcher } from '../types.js';
+import { browserLaunchOptions } from '../auth/session.js';
 
 /**
  * Playwright-backed fallback. Playwright is imported dynamically so that users
@@ -25,7 +26,7 @@ export class BrowserFetcher implements Fetcher {
         this.contextPromise ??= (async () => {
           const { chromium } = await import('playwright');
           return await chromium.launchPersistentContext(this.profileDir, {
-            channel: 'chrome',
+            ...browserLaunchOptions(),
             headless: true,
           });
         })();

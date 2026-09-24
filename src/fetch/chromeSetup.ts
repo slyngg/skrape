@@ -22,14 +22,19 @@ import { fileURLToPath } from 'node:url';
  * A missing/unreadable/empty marker is just treated as "not installed".
  */
 export function isChromeMarkedInstalled(markerPath: string): boolean {
-  if (!existsSync(markerPath)) return false;
+  return markedExecutablePath(markerPath) !== null;
+}
+
+/** The browser executable a past run confirmed, if the marker exists and that path still does. */
+export function markedExecutablePath(markerPath: string): string | null {
+  if (!existsSync(markerPath)) return null;
   let storedPath: string;
   try {
     storedPath = readFileSync(markerPath, 'utf8').trim();
   } catch {
-    return false;
+    return null;
   }
-  return storedPath.length > 0 && existsSync(storedPath);
+  return storedPath.length > 0 && existsSync(storedPath) ? storedPath : null;
 }
 
 /** Records the confirmed Chrome executable's path, so later runs can skip
@@ -57,18 +62,33 @@ export async function markChromeInstalled(markerPath: string, executablePath: st
  * run) never pays Playwright's module-load cost at all.
  */
 export async function probeChromeLaunchable(): Promise<string | undefined> {
+  let chromium: typeof import('playwright').chromium;
   try {
-    const { chromium } = await import('playwright');
-    const server = await chromium.launchServer({ channel: 'chrome', headless: true });
-    try {
-      return server.process().spawnfile;
-    } finally {
-      await server.close();
-    }
+    ({ chromium } = await import('playwright'));
   } catch {
     return undefined;
   }
+  // Prefer the user's real Chrome; fall back to Playwright's own Chromium (what gets
+  // installed on Linux, where installing Chrome itself needs root).
+  const candidates: Array<{ channel?: string; executablePath?: string }> = [{ channel: 'chrome' }];
+  if (existsSync(chromium.executablePath())) candidates.push({ executablePath: chromium.executablePath() });
+  for (const options of candidates) {
+    try {
+      const server = await chromium.launchServer({ ...options, headless: true });
+      try {
+        return server.process().spawnfile;
+      } finally {
+        await server.close();
+      }
+    } catch {
+      // try the next candidate
+    }
+  }
+  return undefined;
 }
+
+/** Which browser to install when none is launchable: Chrome where that needs no root, Chromium on Linux. */
+export const INSTALL_TARGET = process.platform === 'linux' ? 'chromium' : 'chrome';
 
 /** Resolves the on-disk path to Playwright's own bundled CLI script, via the
  *  package's exported `./package.json` subpath (not `./cli.js`, which isn't
@@ -97,7 +117,7 @@ export async function installChromeViaCli(onProgress?: (elapsedSeconds: number) 
   const cliPath = await resolvePlaywrightCliPath();
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(process.execPath, [cliPath, 'install', 'chrome'], {
+    const child = spawn(process.execPath, [cliPath, 'install', INSTALL_TARGET], {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 

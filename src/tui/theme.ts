@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import type { Outcome } from '../sync.js';
 
 /** Brand accent: peach. Ink takes hex; the plain CLI falls back to a named color. */
@@ -13,6 +14,12 @@ export const OUTCOME_STYLE: Record<Outcome, { icon: string; label: string; color
   unavailable: { icon: '!', label: 'unavailable', color: 'yellow' },
   failed: { icon: '✗', label: 'failed', color: 'red' },
 };
+
+/** A path as a person reads it: absolute, with the home folder shortened to ~. */
+export function displayPath(path: string): string {
+  const home = homedir();
+  return path === home || path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
+}
 
 export function formatDuration(ms: number): string {
   const seconds = Math.max(0, Math.round(ms / 1000));

@@ -1,3 +1,4 @@
+import { INSTALL_TARGET } from '../fetch/chromeSetup.js';
 /**
  * Pure decision logic for the one-time "make sure Chrome is installed" step
  * that runs before the session check. Kept free of fs/child_process/Playwright
@@ -28,7 +29,7 @@ export interface ChromeReadyResult {
   installed: boolean;
 }
 
-const MANUAL_FALLBACK = 'npx playwright install chrome';
+const MANUAL_FALLBACK = `npx playwright install ${INSTALL_TARGET}`;
 
 /** Thrown when the automatic install fails. Its message is already
  *  human-actionable (includes the manual fallback command) — callers can

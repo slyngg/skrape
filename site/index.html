@@ -129,16 +129,16 @@ a { color: var(--phos); }
 const delivery = {
   name: "skrape",
   tagline: "Read Skool courses instead of watching them. Clean, timestamped transcripts of every lesson, and every video if you want them.",
-  version: "0.2.0",
+  version: "0.2.1",
   date: "September 24, 2026",
   installURL: "https://skrape.abovetopsecret.ai/install",
-  requires: "macOS or Linux, Node 22+ (the installer sets it up), a Skool community you belong to",
+  requires: "macOS or Linux, Node 22+ (the installer sets it up if you have Homebrew), a Skool community you belong to",
   steps: [
     "Run the command. It installs skrape and opens it.",
     "Sign in to Skool once in the browser window it opens. You type your password, skrape never sees it.",
     "Pick a community with the arrow keys.",
     "Choose Transcripts, or Transcripts + videos.",
-    "Read. Everything lands in ./out/<community>/, one file per lesson."
+    "Read. Everything lands in ~/skrape/<community>/, one file per lesson."
   ],
   usage: [
     ["skrape", "the guided flow"],
@@ -147,6 +147,7 @@ const delivery = {
     ["skrape login", "sign in again if your session expires"]
   ],
   changelog: [
+    ["0.2.1", "Sep 24, 2026", ["Everything saves to ~/skrape/<community>, wherever you run it from, and the full path is shown before and after a sync. Re-syncing into a new folder now writes the files instead of calling them already done.", "Picking Transcripts + videos without yt-dlp keeps you on the menu with the install command, instead of ending the session.", "Linux without Chrome works: skrape installs its own Chromium in your home folder, no root needed.", "Sign-in no longer prints its instructions twice."]],
     ["0.2.0", "Sep 24, 2026", ["Download every lesson video alongside the transcripts: pick Transcripts + videos, or pass --videos. Videos already on disk are skipped, so a re-run only fetches what is new.", "Redesigned terminal flow: a live progress bar with time left, a summary card, and the lessons that need your attention listed worst first.", "One-line installer."]],
     ["0.1.0", "Aug 5, 2026", ["First release. Pulls a community's whole classroom into readable transcripts, straight from the captions Loom already publishes. No audio download, no speech-to-text."]]
   ],
