@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './quiet.js';
 import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 import { styleText } from 'node:util';

@@ -1,6 +1,6 @@
 #!/bin/bash
 # skrape installer.   curl -fsSL https://skrape.abovetopsecret.ai/install | bash
-# Makes sure Node 22+ is there, installs skrape from npm, offers the video tools, launches.
+# Makes sure Node 22.13+ is there, installs skrape from npm, offers the video tools, launches.
 set -e
 PKG="${SKRAPE_PKG:-@mogulmoretti/skrape@latest}"
 G=$'\033[92m'; D=$'\033[32m'; Y=$'\033[33m'; R=$'\033[91m'; N=$'\033[0m'; B=$'\033[1m'
@@ -32,15 +32,15 @@ case "$(uname -s)" in Darwin|Linux) ;; *) fail "skrape runs on macOS or Linux." 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
 has() { command -v "$1" >/dev/null 2>&1; }
 
-# node: 0-30. Needs 22+; Homebrew installs it when it's missing or too old.
-node_major() { node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0; }
+# node: 0-30. Needs 22.13+, the first Node with built-in SQLite on by default; checked directly.
+node_ok() { node -e "require('node:sqlite')" >/dev/null 2>&1; }
 target 10
-if [ "$(node_major)" -lt 22 ]; then
+if ! node_ok; then
   if has brew; then
     brew install node >>"$LOG" 2>&1 || brew upgrade node >>"$LOG" 2>&1 || fail "Could not install Node with Homebrew."
     hash -r
   fi
-  [ "$(node_major)" -ge 22 ] || fail "skrape needs Node 22 or newer. Get it from https://nodejs.org, then run this again."
+  node_ok || fail "skrape needs Node 22.13 or newer. Get it from https://nodejs.org, then run this again."
 fi
 target 30
 

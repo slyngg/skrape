@@ -1,4 +1,5 @@
-import Database from 'better-sqlite3';
+// Node's built-in SQLite: no native module to compile, so installs never depend on a C toolchain.
+import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
 import { dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
@@ -72,9 +73,9 @@ export function openDb(path: string): Db {
     }
   }
 
-  const db = new Database(path);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
+  const db = new DatabaseSync(path);
+  db.exec('PRAGMA journal_mode = WAL');
+  db.exec('PRAGMA foreign_keys = ON');
   db.exec(SCHEMA);
 
   return {

@@ -171,7 +171,7 @@ export async function syncClassroom(options: SyncOptions): Promise<SyncSummary> 
     }
   };
 
-  // A better-sqlite3 error from any of the three store calls below (disk full, locked db, FK
+  // A SQLite error from any of the three store calls below (disk full, locked db, FK
   // violation) must become a per-lesson 'failed' outcome, not a run-ending rejection: a Promise.all
   // over the worker pool would reject on the first such error while sibling workers are still in
   // flight, and the CLI's finally-block browser.close() would then race a live worker into
