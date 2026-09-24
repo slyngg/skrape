@@ -58,19 +58,19 @@ describe('applyProgress', () => {
 
 describe('formatProgressBar', () => {
   it('renders an empty bar at zero progress', () => {
-    expect(formatProgressBar(0, 10, 10)).toBe('[----------] 0/10');
+    expect(formatProgressBar(0, 10, 10)).toBe('░░░░░░░░░░  0/10  0%');
   });
 
   it('renders a full bar when done equals total', () => {
-    expect(formatProgressBar(10, 10, 10)).toBe('[##########] 10/10');
+    expect(formatProgressBar(10, 10, 10)).toBe('██████████  10/10  100%');
   });
 
   it('renders a partial bar', () => {
-    expect(formatProgressBar(5, 10, 10)).toBe('[#####-----] 5/10');
+    expect(formatProgressBar(5, 10, 10)).toBe('█████░░░░░  5/10  50%');
   });
 
   it('does not divide by zero when total is 0', () => {
     expect(() => formatProgressBar(0, 0, 10)).not.toThrow();
-    expect(formatProgressBar(0, 0, 10)).toBe('[----------] 0/0');
+    expect(formatProgressBar(0, 0, 10)).toBe('░░░░░░░░░░  0/0  0%');
   });
 });

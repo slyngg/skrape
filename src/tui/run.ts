@@ -37,14 +37,14 @@ export async function runGuidedFlow(): Promise<void> {
       probeLaunchable: probeChromeLaunchable,
       markInstalled: (executablePath) => markChromeInstalled(chromeMarkerPath(), executablePath),
       installChrome: async (onProgress) => {
-        console.log('\nSetting up the browser skrape needs — this happens once, ~150MB.\n');
+        console.log('\nSetting up the browser skrape needs. This happens once, ~150MB.\n');
         await installChromeViaCli(onProgress);
         console.log('\nBrowser setup complete.\n');
         const executablePath = await probeChromeLaunchable();
         if (!executablePath) {
           throw new Error(
             'Chrome installed, but still could not be launched. This usually means a platform-specific ' +
-              'dependency is missing — see the Playwright install output above for details.',
+              'dependency is missing. See the Playwright install output above for details.',
           );
         }
         return executablePath;
@@ -98,8 +98,8 @@ export async function runGuidedFlow(): Promise<void> {
       return courses.filter((course) => course.hasAccess).length;
     },
 
-    runSync: async (slug, outDir, onProgress) =>
-      syncClassroom({ slug, outDir, db, fetcher: lifecycle.getFetcher(), concurrency: 4, onProgress }),
+    runSync: async (slug, outDir, onProgress, videos) =>
+      syncClassroom({ slug, outDir, db, fetcher: lifecycle.getFetcher(), concurrency: 4, videos, onProgress }),
   };
 
   const { waitUntilExit } = render(React.createElement(App, { controllers }));

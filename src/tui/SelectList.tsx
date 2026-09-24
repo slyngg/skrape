@@ -1,9 +1,12 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
+import { ACCENT } from './theme.js';
 
 export interface SelectItem<T> {
   label: string;
   value: T;
+  /** Dim text shown after the label. */
+  hint?: string;
 }
 
 interface SelectListProps<T> {
@@ -29,14 +32,22 @@ export function SelectList<T>({ items, onSelect }: SelectListProps<T>): React.JS
     }
   });
 
+  const labelWidth = Math.max(...items.map((item) => item.label.length));
   return (
     <Box flexDirection="column">
-      {items.map((item, index) => (
-        <Text key={item.label} color={index === cursor ? 'cyan' : undefined}>
-          {index === cursor ? '> ' : '  '}
-          {item.label}
-        </Text>
-      ))}
+      {items.map((item, index) => {
+        const active = index === cursor;
+        return (
+          <Text key={item.label}>
+            <Text color={ACCENT}>{active ? '❯ ' : '  '}</Text>
+            <Text color={active ? ACCENT : undefined} bold={active}>
+              {item.hint ? item.label.padEnd(labelWidth) : item.label}
+            </Text>
+            {item.hint && <Text dimColor>   {item.hint}</Text>}
+          </Text>
+        );
+      })}
+      <Text dimColor>{'\n'}↑↓ move · enter select</Text>
     </Box>
   );
 }

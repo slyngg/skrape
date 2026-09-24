@@ -1,6 +1,6 @@
 {
   "name": "@mogulmoretti/skrape",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Read Skool course content instead of watching it — pulls the classroom of a community you belong to into clean, readable transcripts.",
   "keywords": [
     "skool",

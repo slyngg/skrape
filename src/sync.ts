@@ -1,6 +1,7 @@
 import { listCourses, listLessons } from './discover/skool.js';
 import { getTranscript } from './media/index.js';
-import { writeTranscript } from './store/markdown.js';
+import { downloadVideo, hasYtDlp } from './media/download.js';
+import { videoPath, writeTranscript } from './store/markdown.js';
 import type { Db } from './store/db.js';
 import type { ContentItem, Fetcher } from './types.js';
 
@@ -25,6 +26,14 @@ export interface SyncSummary {
   counts: Record<Outcome, number>;
   problems: Problem[];
   totalWords: number;
+  /** Present only when the sync was asked to download videos. */
+  videos?: VideoCounts;
+}
+
+export interface VideoCounts {
+  downloaded: number;
+  existing: number;
+  failed: number;
 }
 
 export interface SyncOptions {
@@ -33,6 +42,8 @@ export interface SyncOptions {
   db: Db;
   fetcher: Fetcher;
   concurrency?: number;
+  /** Also download each lesson's video (needs yt-dlp on PATH). */
+  videos?: boolean;
   onProgress?: (event: ProgressEvent) => void;
 }
 
@@ -72,7 +83,15 @@ interface LessonEntry {
 }
 
 export async function syncClassroom(options: SyncOptions): Promise<SyncSummary> {
-  const { slug, outDir, db, fetcher, concurrency = 4, onProgress } = options;
+  const { slug, outDir, db, fetcher, concurrency = 4, videos = false, onProgress } = options;
+
+  if (videos && !(await hasYtDlp())) {
+    throw new Error(
+      'Video downloads need yt-dlp, which was not found on your PATH. ' +
+        'Install it (macOS: brew install yt-dlp ffmpeg; others: https://github.com/yt-dlp/yt-dlp#installation) and try again.',
+    );
+  }
+  const videoCounts: VideoCounts | undefined = videos ? { downloaded: 0, existing: 0, failed: 0 } : undefined;
 
   const counts: Record<Outcome, number> = {
     ok: 0, skipped: 0, 'no-video': 0, 'no-access': 0, unavailable: 0, failed: 0,
@@ -89,7 +108,7 @@ export async function syncClassroom(options: SyncOptions): Promise<SyncSummary> 
     counts['no-access']++;
     problems.push({
       outcome: 'no-access', course: locked.title, title: '(entire course)',
-      reason: 'hasAccess is 0 — not entitled, skipped without probing',
+      reason: 'hasAccess is 0, not entitled, skipped without probing',
     });
   }
 
@@ -140,12 +159,12 @@ export async function syncClassroom(options: SyncOptions): Promise<SyncSummary> 
   const record = (outcome: Outcome, item: ContentItem, reason?: string) => {
     counts[outcome]++;
     if (reason) {
-      problems.push({ outcome, course: item.course ?? '—', title: item.title, reason });
+      problems.push({ outcome, course: item.course ?? '-', title: item.title, reason });
     }
     done++;
     // Progress reporting is cosmetic. A caller's callback throwing must never fail the sync.
     try {
-      onProgress?.({ outcome, course: item.course ?? '—', title: item.title, done, total });
+      onProgress?.({ outcome, course: item.course ?? '-', title: item.title, done, total });
     } catch {
       // swallow — the caller's callback is not our concern
     }
@@ -178,6 +197,20 @@ export async function syncClassroom(options: SyncOptions): Promise<SyncSummary> 
 
       if (!item.hasAccess) return record('no-access', item, 'lesson locked');
       if (!item.videoUrl) return record('no-video', item, 'lesson has no video attached');
+
+      // Download before the transcript step so an already-transcribed lesson still gets its video.
+      if (videoCounts) {
+        const download = await downloadVideo(item.videoUrl, videoPath(outDir, item, padWidth));
+        if (download.status === 'failed') {
+          videoCounts.failed++;
+          problems.push({
+            outcome: 'failed', course: item.course ?? '-', title: item.title,
+            reason: `video download: ${download.reason}`,
+          });
+        } else {
+          videoCounts[download.status === 'downloaded' ? 'downloaded' : 'existing']++;
+        }
+      }
 
       let status: string | null;
       try {
@@ -224,5 +257,5 @@ export async function syncClassroom(options: SyncOptions): Promise<SyncSummary> 
   );
 
   db.markSynced(slug);
-  return { counts, problems, totalWords };
+  return { counts, problems, totalWords, videos: videoCounts };
 }

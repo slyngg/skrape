@@ -37,6 +37,5 @@ export function formatProgressBar(done: number, total: number, width = 24): stri
   const safeTotal = total > 0 ? total : 1;
   const ratio = Math.min(1, Math.max(0, done / safeTotal));
   const filled = Math.round(ratio * width);
-  const bar = '#'.repeat(filled) + '-'.repeat(width - filled);
-  return `[${bar}] ${done}/${total}`;
+  return `${'█'.repeat(filled)}${'░'.repeat(width - filled)}  ${done}/${total}  ${Math.round(ratio * 100)}%`;
 }

@@ -53,3 +53,24 @@ describe('formatSummary', () => {
     expect(lines.some((line) => line.includes('12,345'))).toBe(true);
   });
 });
+
+describe('formatSummary headline', () => {
+  it('calls a re-sync with everything already on disk up to date, not empty', () => {
+    const summary: SyncSummary = { ...emptySummary, counts: { ...emptySummary.counts, skipped: 4 } };
+    expect(formatSummary(summary, './out/demo')[0]).toMatch(/up to date/i);
+  });
+});
+
+describe('formatSummary problem order', () => {
+  it('lists failures before routine no-video lessons', () => {
+    const summary: SyncSummary = {
+      ...emptySummary,
+      problems: [
+        { outcome: 'no-video', course: 'C', title: 'Intro', reason: 'none' },
+        { outcome: 'failed', course: 'C', title: 'Broken', reason: 'boom' },
+      ],
+    };
+    const lines = formatSummary(summary, './out/demo');
+    expect(lines.findIndex((l) => l.includes('Broken'))).toBeLessThan(lines.findIndex((l) => l.includes('Intro')));
+  });
+});

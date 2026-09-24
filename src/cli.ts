@@ -1,15 +1,19 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module';
+import { styleText } from 'node:util';
 import { Command } from 'commander';
 import { HttpFetcher } from './fetch/http.js';
 import { BrowserFetcher } from './fetch/browser.js';
 import { ResilientFetcher } from './fetch/resilient.js';
 import { openDb } from './store/db.js';
 import { syncClassroom } from './sync.js';
+import { formatSummary, type Paint } from './tui/summary.js';
+import { OUTCOME_STYLE, formatDuration } from './tui/theme.js';
 import { login, profileDir, dbPath, ensureRoot, isLoggedIn } from './auth/session.js';
 
-const MARKS: Record<string, string> = {
-  ok: '+', skipped: '=', 'no-video': '.', 'no-access': '-', unavailable: '!', failed: 'x',
-};
+// Color only for a human at a terminal; pipes and NO_COLOR get plain text.
+const useColor = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+const paint: Paint = (color, text) => (useColor ? styleText(color, text) : text);
 
 const MAX_CONCURRENCY = 16;
 
@@ -21,7 +25,13 @@ function parseConcurrency(raw: string): number | null {
 }
 
 const program = new Command();
-program.name('skrape').description('Read Skool content instead of watching it');
+const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
+
+program
+  .name('skrape')
+  .description('Read Skool course content instead of watching it')
+  .version(version, '-v, --version')
+  .addHelpText('after', '\nRun `skrape` with no arguments for the guided, interactive flow.');
 
 program
   .command('login')
@@ -35,8 +45,9 @@ program
   .argument('<slug>', 'community slug, e.g. demo from skool.com/demo')
   .option('-o, --out <dir>', 'output directory', './out')
   .option('-c, --concurrency <n>', 'parallel requests', '4')
-  .description('Pull a community classroom to disk as transcripts')
-  .action(async (slug: string, options: { out: string; concurrency: string }) => {
+  .option('--videos', 'also download every lesson video (needs yt-dlp)')
+  .description('Pull a community classroom to disk as transcripts (and optionally videos)')
+  .action(async (slug: string, options: { out: string; concurrency: string; videos?: boolean }) => {
     const concurrency = parseConcurrency(options.concurrency);
     if (concurrency === null) {
       console.error(
@@ -53,6 +64,8 @@ program
     const browser = new BrowserFetcher(profileDir());
     const fetcher = new ResilientFetcher(new HttpFetcher(), async () => browser, isLoggedIn);
 
+    const startedAt = Date.now();
+    console.log(`${paint('bold', '◆ skrape')} ${paint('dim', `syncing skool.com/${slug}${options.videos ? ' · with videos' : ''}`)}\n`);
     try {
       const summary = await syncClassroom({
         slug,
@@ -60,44 +73,37 @@ program
         db,
         fetcher,
         concurrency,
+        videos: options.videos,
         onProgress: (event) => {
-          const mark = MARKS[event.outcome] ?? '?';
-          console.log(`${mark} [${event.done}/${event.total}] ${event.course.slice(0, 28).padEnd(28)} ${event.title.slice(0, 50)}`);
+          const style = OUTCOME_STYLE[event.outcome];
+          const counter = `${event.done}/${event.total}`.padStart(String(event.total).length * 2 + 1);
+          console.log(`${paint(style.color, style.icon)} ${paint('dim', counter)}  ${paint('dim', `${event.course.slice(0, 28)} ›`)} ${event.title.slice(0, 60)}`);
         },
       });
 
-      console.log('\n--- summary ---');
-      for (const [outcome, count] of Object.entries(summary.counts)) {
-        if (count > 0) console.log(`  ${outcome.padEnd(14)} ${count}`);
-      }
-      console.log(`  ${'words'.padEnd(14)} ${summary.totalWords.toLocaleString('en-US')}`);
-
+      console.log('');
+      for (const line of formatSummary(summary, outDir, paint)) console.log(line);
+      console.log(paint('dim', `Finished in ${formatDuration(Date.now() - startedAt)}`));
       if (fetcher.escalatedRoutes.size > 0) {
-        console.log(`\n  escalated to browser: ${[...fetcher.escalatedRoutes].join(', ')}`);
+        console.log(paint('dim', `Escalated to browser: ${[...fetcher.escalatedRoutes].join(', ')}`));
       }
-
-      if (summary.problems.length > 0) {
-        console.log('\n--- not transcribed ---');
-        for (const problem of summary.problems) {
-          console.log(`  [${problem.outcome}] ${problem.course} / ${problem.title}: ${problem.reason}`);
-        }
-      }
-      console.log(`\nOutput: ${outDir}`);
     } catch (error) {
-      console.error(`\nSync failed: ${(error as Error).message}`);
-      if (fetcher.escalatedRoutes.size > 0) {
+      console.error(`\n${paint('red', '✗ Sync failed:')} ${(error as Error).message}`);
+      if ((error as Error).message.includes('HTTP 404')) {
+        console.error(`No classroom at skool.com/${slug}. Check the slug (the part after skool.com/).`);
+      } else if (fetcher.escalatedRoutes.size > 0) {
         console.error(
           `\n  escalated to browser: ${[...fetcher.escalatedRoutes].join(', ')}`,
         );
         console.error(
           'If this mentions an unexpected payload, the authenticated browser path was already tried ' +
           "for the route(s) above, so Skool's page structure most likely changed rather than the " +
-          'session being expired. A fresh `skool login` is still worth trying, but treat it as a ' +
+          'session being expired. A fresh `skrape login` is still worth trying, but treat it as a ' +
           'secondary guess.',
         );
       } else {
         console.error(
-          'If this mentions an unexpected payload, your session may have expired — run: skool login. ' +
+          'If this mentions an unexpected payload, your session may have expired. Run: skrape login. ' +
           "It is also possible Skool's page structure changed; if a retry after login fails the same " +
           'way, that is more likely.',
         );

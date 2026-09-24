@@ -82,7 +82,7 @@ export function isProfileLockError(error: unknown): boolean {
 export function translateLaunchError(error: unknown): Error {
   if (isProfileLockError(error)) {
     const friendly = new Error(
-      'The Chrome profile is already in use. Another skrape process may be running — ' +
+      'The Chrome profile is already in use. Another skrape process may be running. ' +
         'if not, delete ~/.skool-skrape/chrome-profile/SingletonLock and try again.',
     );
     friendly.cause = error;

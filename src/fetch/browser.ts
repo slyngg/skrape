@@ -18,7 +18,7 @@ export class BrowserFetcher implements Fetcher {
     close(): Promise<void>;
   }> }> {
     if (this.closed) {
-      throw new Error('BrowserFetcher is closed — cannot open a new context after close()');
+      throw new Error('BrowserFetcher is closed, cannot open a new context after close()');
     }
     if (!this.context) {
       try {

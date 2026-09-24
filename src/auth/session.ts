@@ -81,6 +81,6 @@ export async function login(onContext?: (context: LoginContextHandle) => void): 
     { timeout: 0 },
   );
 
-  console.log('Signed in. Session saved — future runs will not need this.');
+  console.log('Signed in. Session saved, future runs will not need this.');
   await context.close();
 }

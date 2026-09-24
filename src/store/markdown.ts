@@ -15,11 +15,19 @@ export function slugify(text: string, maxLength = 60): string {
   return cleaned || 'untitled';
 }
 
-export function transcriptPath(outDir: string, item: ContentItem, padWidth = 2): string {
+function lessonPath(outDir: string, kind: string, ext: string, item: ContentItem, padWidth: number): string {
   const course = slugify(item.course ?? 'uncategorized');
   const width = Math.max(2, padWidth);
-  const name = `${String(item.index).padStart(width, '0')}-${slugify(item.title)}.md`;
-  return join(outDir, 'transcripts', course, name);
+  const name = `${String(item.index).padStart(width, '0')}-${slugify(item.title)}.${ext}`;
+  return join(outDir, kind, course, name);
+}
+
+export function transcriptPath(outDir: string, item: ContentItem, padWidth = 2): string {
+  return lessonPath(outDir, 'transcripts', 'md', item, padWidth);
+}
+
+export function videoPath(outDir: string, item: ContentItem, padWidth = 2): string {
+  return lessonPath(outDir, 'videos', 'mp4', item, padWidth);
 }
 
 export async function writeTranscript(
@@ -34,7 +42,7 @@ export async function writeTranscript(
 
   const minutes = Math.round(item.durationMs / 60_000);
   const cleanTitle = item.title.replace(/\s+/g, ' ');
-  const cleanCourse = (item.course ?? '—').replace(/\s+/g, ' ');
+  const cleanCourse = (item.course ?? '-').replace(/\s+/g, ' ');
   const cleanSection = item.section?.replace(/\s+/g, ' ');
 
   const header = [
